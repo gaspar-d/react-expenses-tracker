@@ -1,14 +1,12 @@
 import React, { createContext, useReducer } from "react";
 import AppReducer from "./AppReducer";
+import axios from "axios";
 
 // Initial State
 const initialState = {
-	transactions: [
-		{ id: 1, text: "Flower", amount: -20 },
-		{ id: 2, text: "Salary", amount: 300 },
-		{ id: 3, text: "Book", amount: -10 },
-		{ id: 4, text: "Camera", amount: 150 },
-	],
+	transactions: [],
+	error: null,
+	loading: true,
 };
 
 // Create Context
@@ -18,24 +16,74 @@ export const GlobalProvider = ({ children }) => {
 	const [state, dispatch] = useReducer(AppReducer, initialState);
 
 	// Actions
-	const deleteTransaction = (id) => {
-		dispatch({
-			type: "DELETE_TRANSACTION",
-			payload: id,
-		});
+
+	async function getTransactions() {
+		try {
+			const result = await axios.get("/api/v1/transactions");
+
+			console.log(result.data.data);
+
+			dispatch({
+				type: "GET_TRANSACTIONS",
+				payload: result.data.data,
+			});
+		} catch (error) {
+			dispatch({
+				type: "TRANSACTION_ERROR",
+				payload: error.result.data.error,
+			});
+		}
+	}
+
+	const deleteTransaction = async (id) => {
+		try {
+			await axios.delete(`api/v1/transactions/${id}`);
+
+			dispatch({
+				type: "DELETE_TRANSACTION",
+				payload: id,
+			});
+		} catch (error) {
+			dispatch({
+				type: "TRANSACTION_ERROR",
+				payload: error.result.data.error,
+			});
+		}
 	};
 
-	const addTransaction = (transaction) => {
-		dispatch({
-			type: "ADD_TRANSACTION",
-			payload: transaction,
-		});
+	const addTransaction = async (transaction) => {
+		const config = {
+			headers: {
+				"Content-Type": "application/json",
+			},
+		};
+
+		try {
+			const result = await axios.post(
+				`api/v1/transactions`,
+				transaction,
+				config
+			);
+
+			dispatch({
+				type: "ADD_TRANSACTION",
+				payload: result.data.data,
+			});
+		} catch (error) {
+			dispatch({
+				type: "TRANSACTION_ERROR",
+				payload: error.result.data.error,
+			});
+		}
 	};
 
 	return (
 		<GlobalContext.Provider
 			value={{
 				transactions: state.transactions,
+				error: state.error,
+				loading: state.loading,
+				getTransactions,
 				deleteTransaction,
 				addTransaction,
 			}}
